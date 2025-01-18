@@ -1,3 +1,5 @@
+import gzip
+import re
 from typing import (
     Annotated,
     Literal,
@@ -11,7 +13,78 @@ from pydantic import (
     field_validator,
     model_validator,
     AliasChoices,
+    ValidationError,
 )
+
+
+# More info:
+# http://www.ensembl.org/Help/Faq?id=468#:~:text=The%20Ensembl%20automatic%20annotation%20system,incorporate%20manual%20annotation%20from%20Havana.
+
+EnsemblBiotype = Annotated[
+    Literal[
+        "IG_C_gene",
+        "IG_C_pseudogene",
+        "IG_D_gene",
+        "IG_J_gene",
+        "IG_J_pseudogene",
+        "IG_V_gene",
+        "IG_V_pseudogene",
+        "IG_pseudogene",
+        "Mt_rRNA",
+        "Mt_tRNA",
+        "TEC",
+        "TR_C_gene",
+        "TR_D_gene",
+        "TR_J_gene",
+        "TR_J_pseudogene",
+        "TR_V_gene",
+        "TR_V_pseudogene",
+        "artifact",
+        "lncRNA",
+        "miRNA",
+        "misc_RNA",
+        "nonsense_mediated_decay",
+        "processed_pseudogene",
+        "processed_transcript",
+        "protein_coding",
+        "protein_coding_LoF",
+        "pseudogene",
+        "rRNA",
+        "rRNA_pseudogene",
+        "retained_intron",
+        "ribozyme",
+        "sRNA",
+        "scRNA",
+        "scaRNA",
+        "snRNA",
+        "snoRNA",
+        "transcribed_processed_pseudogene",
+        "transcribed_unitary_pseudogene",
+        "transcribed_unprocessed_pseudogene",
+        "translated_processed_pseudogene",
+        "unitary_pseudogene",
+        "unprocessed_pseudogene",
+        "vault_RNA",
+    ],
+    Field(),
+]
+
+TranscriptTag = Annotated[
+    Literal[
+        "gencode_basic",
+        "Ensembl_canonical",
+        "gencode_primary",
+        "MANE_Select",
+        "MANE_Plus_Clinical",
+    ],
+    Field(),
+]
+
+
+def na_to_none(value: Any) -> Any:
+    if value.lower() == "na":
+        return None
+    return value
 
 
 class GenomicRange(BaseModel):
@@ -65,76 +138,47 @@ class Row(BaseModel):
         return attributes
 
 
-def na_to_none(value: Any) -> Any:
-    if value.lower() == "na":
-        return None
-    return value
+# ID=gene:ENSG00000239945;biotype=lncRNA;description=novel transcript;gene_id=ENSG00000239945;logic_name=havana_homo_sapiens;version=1
+class GeneLikeAttributes(BaseModel):
+    id: Annotated[str, Field(validation_alias=AliasChoices("ID"), pattern="^gene:")]
+    biotype: EnsemblBiotype
+    description: str | None = None
+    gene_id: str
+    logic_name: str
+    version: str
 
 
-TranscriptBiotype = Annotated[
-    Literal[
-        "IG_C_gene",
-        "IG_C_pseudogene",
-        "IG_D_gene",
-        "IG_J_gene",
-        "IG_J_pseudogene",
-        "IG_V_gene",
-        "IG_V_pseudogene",
-        "IG_pseudogene",
-        "Mt_rRNA",
-        "Mt_tRNA",
-        "TEC",
-        "TR_C_gene",
-        "TR_D_gene",
-        "TR_J_gene",
-        "TR_J_pseudogene",
-        "TR_V_gene",
-        "TR_V_pseudogene",
-        "artifact",
-        "lncRNA",
-        "miRNA",
-        "misc_RNA",
-        "nonsense_mediated_decay",
-        "processed_pseudogene",
-        "processed_transcript",
-        "protein_coding",
-        "protein_coding_LoF",
-        "pseudogene",
-        "rRNA",
-        "rRNA_pseudogene",
-        "retained_intron",
-        "ribozyme",
-        "sRNA",
-        "scRNA",
-        "scaRNA",
-        "snRNA",
-        "snoRNA",
-        "transcribed_processed_pseudogene",
-        "transcribed_unitary_pseudogene",
-        "transcribed_unprocessed_pseudogene",
-        "translated_processed_pseudogene",
-        "unitary_pseudogene",
-        "unprocessed_pseudogene",
-        "vault_RNA",
-    ],
-    Field(),
-]
+class GeneLikeRow(Row):
+    attributes: GeneLikeAttributes
 
-TranscriptTag = Annotated[
-    Literal["gencode_basic", "Ensembl_canonical", "gencode_primary",
-    "MANE_Select","MANE_Plus_Clinical"],
-    Field()
-]
+    @field_validator("attributes", mode="before")
+    @classmethod
+    def parse_attributes(cls, value: Any) -> GeneLikeAttributes:
+        attributes = {}
+        for attribute in value.split(";"):
+            key, value = attribute.split("=")
+            vals = value.split(",")
+
+            try:
+                assert len(vals) == 1, (
+                    f"Expected single value for {key} in attributes column, got {vals}"
+                )
+            except AssertionError as e:
+                raise ValueError(e)
+
+            attributes[key] = vals[0]
+
+        return GeneLikeAttributes(**attributes)
 
 
 # ID=transcript:ENST00000623180;Parent=gene:ENSG00000280279;Name=LINC02887-201;biotype=lncRNA;tag=gencode_basic,Ensembl_canonical;transcript_id=ENST00000623180;transcript_support_level=5;version=1
 class GencodeBasicTranscriptAttributes(BaseModel):
-    id: str = Field(str, validation_alias=AliasChoices("ID"))
-    parent: str = Field(validation_alias=AliasChoices("Parent"))
-    name: str | None = Field(
-        validation_alias=AliasChoices("Name"), default=None
-    )
-    biotype: TranscriptBiotype
+    id: Annotated[
+        str, Field(validation_alias=AliasChoices("ID"), pattern="^transcript:")
+    ]
+    parent: str = Field(validation_alias=AliasChoices("Parent"), pattern="^gene:")
+    name: str | None = Field(validation_alias=AliasChoices("Name"), default=None)
+    biotype: EnsemblBiotype
     tags: Annotated[list[TranscriptTag], Field(alias="tag")]
     transcript_id: str
     transcript_support_level: str | None = None
@@ -167,14 +211,59 @@ class GencodeBasicTranscriptRow(Row):
 
         return GencodeBasicTranscriptAttributes(**attributes)
 
-    # @field_validator("attributes", mode="after")
-    # @classmethod
-    # def validate_gencode_basic_attributes(
-    #     cls, value: GencodeBasicTranscriptAttributes
-    # ) -> GencodeBasicTranscriptAttributes:
-    #     try:
-    #
-    #         re.search(r"transcript:(ENST\d+)", value["ID"][0]).group(1)
-    #     except (KeyError, AttributeError):
-    #         raise ValueError("transcript ID attribute not found.")
-    #     return value
+
+# class Gff3File(BaseModel):
+#     file_path: str
+#     md5sum:
+
+
+def validate(ensembl_gff3_file: str) -> None:
+    errors = []
+
+    col_names = [
+        "seqid",
+        "source",
+        "type",
+        "start",
+        "end",
+        "score",
+        "strand",
+        "phase",
+        "attributes",
+    ]
+
+    with gzip.open(ensembl_gff3_file, "rt") as f:
+        for line_idx, line in enumerate(f, start=1):
+            if line.startswith("#"):
+                continue
+            columns = line.strip().split("\t")
+            if len(columns) != 9:
+                errors.append(f"Line {line_idx}: Incorrect number of columns.")
+                continue
+
+            cols_vals = {
+                col_names[col_idx]: columns[col_idx]
+                for col_idx, _ in enumerate(columns)
+            }
+
+            cols_vals["location"] = GenomicRange(start=columns[3], end=columns[4])
+
+            if re.search(r"ID=gene:", columns[8]):
+                try:
+                    GeneLikeRow(**cols_vals)
+                except ValidationError as e:
+                    errors.append(f"Line {line_idx}: {str(e)}")
+            elif re.search(r"tag=gencode_basic", columns[8]):
+                try:
+                    GencodeBasicTranscriptRow(**cols_vals)
+
+                except ValidationError as e:
+                    errors.append(f"Line {line_idx}: {str(e)}")
+            else:
+                try:
+                    Row(**cols_vals)
+                except ValidationError as e:
+                    errors.append(f"Line {line_idx}: {str(e)}")
+
+    with open("validation_errors.txt", "w") as f:
+        f.write("\n".join(errors))
