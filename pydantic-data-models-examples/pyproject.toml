@@ -7,6 +7,9 @@ requires-python = ">=3.12"
 dependencies = [
     "pydantic-settings>=2.7.1",
     "pydantic>=2.10.5",
+    "rich>=13.9.4",
+    "polars>=1.20.0",
+    "pandera[polars]>=0.22.1",
 ]
 
 [build-system]
@@ -18,3 +21,5 @@ dev = [
     "ruff>=0.9.2",
 ]
 
+[project.scripts]
+ens-annot-validate = "pydantic_data_models_examples.cli:cli"
