@@ -82,7 +82,7 @@ def parse_cli() -> EnsAnnotationValidate:
     )
 
 
-def _setup_logging():
+def _setup_logging() -> None:
     logging.basicConfig(
         format="[ %(asctime)s ] — [ %(funcName)s:%(lineno)d ] — %(message)s",
         level=logging.INFO,
@@ -109,9 +109,8 @@ def cli() -> int:
         msgs = [
             f"{[e_details['loc'][0]]} {e_details['msg']}" for e_details in e.errors()
         ]
-        print("\nError:")
-        print("\n".join(msgs))
-        print("-" * 79)
+
+        logging.error("\n".join(msgs))
 
         sys.argv = [sys.argv[0], "-h"]
         parse_cli()
@@ -130,7 +129,7 @@ def cli() -> int:
 
     elif args.type == "tss-parquet":
         logging.info(f"Validating TSS Parquet file: {args.file_path}")
-        tss_parquet.validate(args.file_path)
+        tss_parquet.validate(args.file_path, args.output_dir)
 
     return 0
 
