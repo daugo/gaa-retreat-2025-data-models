@@ -1,5 +1,8 @@
 import gzip
+import logging
 import re
+from datetime import datetime
+from pathlib import Path
 from typing import (
     Annotated,
     Literal,
@@ -14,6 +17,8 @@ from pydantic import (
     model_validator,
     AliasChoices,
     ValidationError,
+    FilePath,
+    DirectoryPath,
 )
 
 
@@ -120,7 +125,7 @@ class Row(BaseModel):
 
     @field_validator("seqid", mode="after")
     @classmethod
-    def chr_prefix_present(cls, value: str) -> str:
+    def chr_prefix_not_present(cls, value: str) -> str:
         if value.lower().startswith("chr"):
             raise ValueError(
                 f"Seqid (col 1) value ('{value}') from an "
@@ -212,12 +217,7 @@ class GencodeBasicTranscriptRow(Row):
         return GencodeBasicTranscriptAttributes(**attributes)
 
 
-# class Gff3File(BaseModel):
-#     file_path: str
-#     md5sum:
-
-
-def validate(ensembl_gff3_file: str) -> None:
+def validate(ensembl_gff3_file: FilePath, out_dir: DirectoryPath) -> None:
     errors = []
 
     col_names = [
@@ -238,13 +238,13 @@ def validate(ensembl_gff3_file: str) -> None:
                 continue
             columns = line.strip().split("\t")
             if len(columns) != 9:
-                errors.append(f"Line {line_idx}: Incorrect number of columns.")
+                errors.append(
+                    f"Line {line_idx}: Incorrect number of "
+                    f"columns. Expected {len(col_names)}."
+                )
                 continue
 
-            cols_vals = {
-                col_names[col_idx]: columns[col_idx]
-                for col_idx, _ in enumerate(columns)
-            }
+            cols_vals = dict(zip(col_names, columns))
 
             cols_vals["location"] = GenomicRange(start=columns[3], end=columns[4])
 
@@ -265,5 +265,13 @@ def validate(ensembl_gff3_file: str) -> None:
                 except ValidationError as e:
                     errors.append(f"Line {line_idx}: {str(e)}")
 
-    with open("validation_errors.txt", "w") as f:
-        f.write("\n".join(errors))
+    if errors:
+        time_info = datetime.now().strftime("%Y%m%d-%H%M%S")
+        error_file = Path(out_dir) / f"validation_errors_{time_info}.txt"
+        with open(error_file, "w") as f:
+            f.write("\n".join(errors))
+
+        logging.error(f"Found {len(errors)} validation errors.")
+        logging.error(f"Validation errors written to {error_file}")
+    else:
+        logging.info("No validation errors found.")
