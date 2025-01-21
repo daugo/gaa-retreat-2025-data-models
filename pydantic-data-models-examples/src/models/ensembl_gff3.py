@@ -19,11 +19,13 @@ from pydantic import (
     ValidationError,
     FilePath,
     DirectoryPath,
+    TypeAdapter,
 )
 
 
 # More info:
 # http://www.ensembl.org/Help/Faq?id=468#:~:text=The%20Ensembl%20automatic%20annotation%20system,incorporate%20manual%20annotation%20from%20Havana.
+
 
 EnsemblBiotype = Annotated[
     Literal[
@@ -217,53 +219,105 @@ class GencodeBasicTranscriptRow(Row):
         return GencodeBasicTranscriptAttributes(**attributes)
 
 
+GFF3FilePath = Annotated[
+    FilePath,
+    Field(
+        description="Ensembl GFF3 file path.",
+        pattern=".*\\.gff3\\.gz$",
+    ),
+]
+
+
+gff3_file_adapter = TypeAdapter(GFF3FilePath)
+
+
+def _validate_gff3_rows(f, errors: list) -> None:
+    for line_idx, line in enumerate(f, start=1):
+        if line.startswith("#"):
+            continue
+        columns = line.strip().split("\t")
+        if len(columns) != 9:
+            errors.append(
+                f"Line {line_idx}: Incorrect number of "
+                f"columns. Expected {len(COL_NAMES)}."
+            )
+            continue
+
+        cols_vals = dict(zip(COL_NAMES, columns))
+
+        cols_vals["location"] = GenomicRange(start=columns[3], end=columns[4])
+
+        if re.search(r"ID=gene:", columns[8]):
+            try:
+                GeneLikeRow(**cols_vals)
+            except ValidationError as e:
+                errors.append(f"Line {line_idx}: {str(e)}")
+        elif re.search(r"tag=gencode_basic", columns[8]):
+            try:
+                GencodeBasicTranscriptRow(**cols_vals)
+
+            except ValidationError as e:
+                errors.append(f"Line {line_idx}: {str(e)}")
+        else:
+            try:
+                Row(**cols_vals)
+            except ValidationError as e:
+                errors.append(f"Line {line_idx}: {str(e)}")
+
+
+COL_NAMES = [
+    "seqid",
+    "source",
+    "type",
+    "start",
+    "end",
+    "score",
+    "strand",
+    "phase",
+    "attributes",
+]
+
+
+def _is_valid_gff3(file_path: FilePath):
+    allowed_compressions = [".gz"]
+
+    path = Path(file_path)
+    suffixes = path.suffixes[-2:]
+
+    if suffixes[0] == ".gff3" and suffixes[1] in allowed_compressions:
+        return True
+
+    if len(suffixes) == 1 and suffixes[0] == ".gff3":
+        return True
+
+    return False
+
+
+def _is_compressed_gff3(file_path: FilePath):
+    path = Path(file_path)
+    suffixes = path.suffixes[-2:]
+
+    logging.info(f"suffixes: {suffixes}")
+
+    if _is_valid_gff3(path) and len(suffixes) == 2 and suffixes[1] == ".gz":
+        return True
+
+    return False
+
+
 def validate(ensembl_gff3_file: FilePath, out_dir: DirectoryPath) -> None:
     errors = []
 
-    col_names = [
-        "seqid",
-        "source",
-        "type",
-        "start",
-        "end",
-        "score",
-        "strand",
-        "phase",
-        "attributes",
-    ]
+    if _is_compressed_gff3(ensembl_gff3_file):
+        with gzip.open(ensembl_gff3_file, "rt") as f:
+            _validate_gff3_rows(f, errors)
 
-    with gzip.open(ensembl_gff3_file, "rt") as f:
-        for line_idx, line in enumerate(f, start=1):
-            if line.startswith("#"):
-                continue
-            columns = line.strip().split("\t")
-            if len(columns) != 9:
-                errors.append(
-                    f"Line {line_idx}: Incorrect number of "
-                    f"columns. Expected {len(col_names)}."
-                )
-                continue
-
-            cols_vals = dict(zip(col_names, columns))
-
-            cols_vals["location"] = GenomicRange(start=columns[3], end=columns[4])
-
-            if re.search(r"ID=gene:", columns[8]):
-                try:
-                    GeneLikeRow(**cols_vals)
-                except ValidationError as e:
-                    errors.append(f"Line {line_idx}: {str(e)}")
-            elif re.search(r"tag=gencode_basic", columns[8]):
-                try:
-                    GencodeBasicTranscriptRow(**cols_vals)
-
-                except ValidationError as e:
-                    errors.append(f"Line {line_idx}: {str(e)}")
-            else:
-                try:
-                    Row(**cols_vals)
-                except ValidationError as e:
-                    errors.append(f"Line {line_idx}: {str(e)}")
+    elif _is_valid_gff3(ensembl_gff3_file):
+        with open(ensembl_gff3_file, "rt") as f:
+            _validate_gff3_rows(f, errors)
+    else:
+        logging.error("File must be a GFF3 file with a .gff3 or .gff3.gz extension.")
+        return
 
     if errors:
         time_info = datetime.now().strftime("%Y%m%d-%H%M%S")
