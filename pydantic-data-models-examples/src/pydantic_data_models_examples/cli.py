@@ -8,9 +8,10 @@ from typing import (
 from pydantic import FilePath, Field, ValidationError, AliasChoices, DirectoryPath
 from pydantic_settings import CliApp, CliPositionalArg, BaseSettings
 
-from models import (
+from pydantic_data_models_examples.models import (
     ensembl_gff3,
     tss_bed,
+    tss_parquet,
 )
 
 from rich.logging import RichHandler
@@ -59,7 +60,7 @@ class EnsAnnotationValidate(
     type: Annotated[
         Literal[
             "ensembl-genome-gff3",
-            # "tss-parquet",
+            "tss-parquet",
             "tss-bed",
             # "merged-exons-parquet",
             # "merged-exons-bed",
@@ -126,6 +127,10 @@ def cli() -> int:
     elif args.type == "tss-bed":
         logging.info(f"Validating TSS BED file: {args.file_path}")
         tss_bed.validate(args.file_path, args.output_dir)
+
+    elif args.type == "tss-parquet":
+        logging.info(f"Validating TSS Parquet file: {args.file_path}")
+        tss_parquet.validate(args.file_path)
 
     return 0
 

@@ -17,7 +17,7 @@ from pydantic import (
 )
 from typing_extensions import Self
 
-from models.ensembl_gff3 import GenomicRange
+from pydantic_data_models_examples.models.ensembl_gff3 import GenomicRange
 
 
 class TssGenomicRange(GenomicRange):
