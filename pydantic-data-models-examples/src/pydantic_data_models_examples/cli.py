@@ -1,21 +1,19 @@
-import logging
+import logging.config
 import sys
 from typing import (
     Annotated,
     Literal,
 )
-from rich import print
 
-from pydantic import (
-    FilePath,
-    Field,
-    ValidationError,
-)
+from pydantic import FilePath, Field, ValidationError, AliasChoices, DirectoryPath
 from pydantic_settings import CliApp, CliPositionalArg, BaseSettings
 
-from models import ensembl_gff3
+from models import (
+    ensembl_gff3,
+    tss_bed,
+)
 
-log = logging.getLogger(__name__)
+from rich.logging import RichHandler
 
 MD5SumHash = Annotated[
     str, Field(description="MD5 checksum hash.", pattern="^[a-fA-F0-9]{32}$")
@@ -39,42 +37,14 @@ InputFileTypes = Annotated[
 ]
 
 
-# class Validate(BaseSettings, cli_parse_args=True):
-#     """Custom validation of ensembl annotation files. XX"""
-#
-#     file_path: CliPositionalArg[InputFilePath]
-#     file_type: InputFileTypes
-#     md5sum: MD5SumHash | None = None
-#
-#     def cli_cmd(self) -> None:
-#         pass
-#
-
-#
-# class EnsAnnotation(
-#     BaseSettings,
-#     cli_parse_args=True,
-#     cli_prog_name="ens-annotation",
-#     cli_kebab_case=True,
-#     cli_use_class_docs_for_groups=True,
-# ):
-#     """Validate ensembl annotation files."""
-#
-#     check: CliSubCommand[Validate]
-#     version: str
-#
-#     def cli_cmd(self) -> None:
-#         CliApp.run_subcommand(self)
-
-
 class EnsAnnotationValidate(
     BaseSettings,
-    cli_prog_name="ens-annotation-validate",
+    cli_prog_name="ens-annot-validate",
     cli_kebab_case=True,
     cli_use_class_docs_for_groups=True,
 ):
     """
-    Example: ens-annotation-validate ensembl-genome-gff3 <file_path>
+    Example: ens-annot-validate -t ensembl-genome-gff3 <FILE-PATH>
 
     Validate:
         - Ensembl genomic annotation files (Ensembl genome GFF3s)
@@ -89,78 +59,76 @@ class EnsAnnotationValidate(
     type: Annotated[
         Literal[
             "ensembl-genome-gff3",
-            "tss-parquet",
+            # "tss-parquet",
             "tss-bed",
-            "merged-exons-parquet",
-            "merged-exons-bed",
+            # "merged-exons-parquet",
+            # "merged-exons-bed",
         ],
-        Field(description="Input file type"),
+        Field(
+            validation_alias=AliasChoices("t"),
+            default="ensembl-genome-gff3",
+            description="Input file type",
+        ),
     ]
+    output_dir: DirectoryPath = "./"
 
 
-def main() -> int:
-    logging.basicConfig(level=logging.INFO)
+def parse_cli() -> EnsAnnotationValidate:
+    return CliApp.run(
+        EnsAnnotationValidate,
+        cli_exit_on_error=True,
+        cli_args=sys.argv[1:],
+    )
+
+
+def _setup_logging():
+    logging.basicConfig(
+        format="[ %(asctime)s ] — [ %(funcName)s:%(lineno)d ] — %(message)s",
+        level=logging.INFO,
+        datefmt="%Y-%m-%d %H:%M:%S",
+        handlers=[
+            RichHandler(
+                rich_tracebacks=True,
+                tracebacks_show_locals=False,
+                show_time=False,
+            )
+        ],
+    )
+
+
+def cli() -> int:
+    _setup_logging()
 
     if len(sys.argv) == 1:
         sys.argv.append("--help")
 
     try:
-        cmd = CliApp.run(
-            EnsAnnotationValidate,
-            cli_exit_on_error=True,
-            cli_args=sys.argv[1:],
-        )
+        args = parse_cli()
     except ValidationError as e:
-        print("Args validation errors:\n")
         msgs = [
             f"{[e_details['loc'][0]]} {e_details['msg']}" for e_details in e.errors()
         ]
+        print("\nError:")
         print("\n".join(msgs))
+        print("-" * 79)
 
+        sys.argv = [sys.argv[0], "-h"]
+        parse_cli()
         return 1
+
     except SystemExit:
         return 1
 
-    print(cmd.file_path)
+    if args.type == "ensembl-genome-gff3":
+        logging.info(f"Validating Ensembl genome GFF3 file: {args.file_path}")
+        ensembl_gff3.validate(args.file_path, args.output_dir)
 
-    if cmd.type == "ensembl-genome-gff3":
-        print(f"Validating Ensembl genome GFF3 file: {cmd.file_path}")
-        ensembl_gff3.validate(cmd.file_path)
-
-    # try:
-    #     cmd = CliApp.run(
-    #         EnsAnnotation,
-    #         cli_exit_on_error=True,
-    #     )
-    #
-    # except (SystemExit, ValidationError):
-    #     # print(e)
-    #     return 1
-    # args: EnsAnnotationValidate = cappa.parse(
-    #     EnsAnnotationValidate,
-    #     argv=argv,
-    #     version="0.0.1",
-    # )
-    #
-    # log.info(args)
-
-    # cappa.invoke(
-    #     EnsAnnotationValidate,
-    #     argv=argv,
-    #     version="0.0.1",
-    # )
-
-    # app = cappa.parse(EnsAnnotationValidate)
-    #
-    # print(app)
-    # try:
-    #     args = parse(EnsAnnotationValidate)
-    # except ValidationError as e:
-    #     print(e)
-    #     return 1
+    elif args.type == "tss-bed":
+        logging.info(f"Validating TSS BED file: {args.file_path}")
+        tss_bed.validate(args.file_path, args.output_dir)
 
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(cli())
