@@ -1,0 +1,10 @@
+.idea
+.vscode
+
+
+pydantic-data-models-examples/*.py[cod]
+.cache/
+.pytest_cache/
+/.ruff_cache/
+__pycache__/
+*.pyc
