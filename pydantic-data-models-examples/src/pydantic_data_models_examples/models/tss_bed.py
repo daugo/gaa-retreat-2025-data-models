@@ -20,19 +20,34 @@ from typing_extensions import Self
 from pydantic_data_models_examples.models.ensembl_gff3 import GenomicRange
 
 
-class TssGenomicRange(GenomicRange):
+class BedRange(BaseModel):
+    start: Annotated[int, Field(ge=0)]
+    end: Annotated[int, Field(ge=1)]
+
     @model_validator(mode="after")
-    def validate_tss_coordinates(self) -> Self:
-        if self.end - self.start:
+    def validate_coordinates(self) -> Self:
+        if self.start >= self.end:
             raise ValueError(
                 f"Start coordinate ({self.start}) is greater than end coordinate ({self.end})."
             )
         return self
 
 
+class TssBedRange(BedRange):
+    @model_validator(mode="after")
+    def validate_tss_coordinates(self) -> Self:
+        if (self.end - self.start) != 1:
+            raise ValueError(
+                f"TSSs should be a one base feature. (end ({self.end}) -"
+                f" start({self.start})) != 1."
+                f"{self.end})."
+            )
+        return self
+
+
 class TssRow(BaseModel):
     seqid: str
-    location: GenomicRange
+    location: TssBedRange
     name: Annotated[str, Field(pattern="^ENSG\\d{11}\\(\\+|\\-\\)$")]
     score: Literal["*"]
     strand: Literal["+", "-"]
@@ -46,6 +61,7 @@ class TssRow(BaseModel):
                 f"Ensembl Generated GFF3 not expected to start "
                 f"with'chr'"
             )
+        return value
 
 
 def validate(file: FilePath, out_dir: DirectoryPath) -> None:
