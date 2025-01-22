@@ -17,8 +17,6 @@ from pydantic import (
 )
 from typing_extensions import Self
 
-from pydantic_data_models_examples.models.ensembl_gff3 import GenomicRange
-
 
 class BedRange(BaseModel):
     start: Annotated[int, Field(ge=0)]
@@ -28,7 +26,8 @@ class BedRange(BaseModel):
     def validate_coordinates(self) -> Self:
         if self.start >= self.end:
             raise ValueError(
-                f"Start coordinate ({self.start}) is greater than end coordinate ({self.end})."
+                f"Start coordinate ({self.start}) is greater or equal than "
+                f"end coordinate ({self.end})."
             )
         return self
 
@@ -64,26 +63,29 @@ class TssRow(BaseModel):
         return value
 
 
-def validate(file: FilePath, out_dir: DirectoryPath) -> None:
+COL_NAMES = ["seqid", "start", "end", "name", "score", "strand"]
+
+
+def _validate_tss_rows(
+    file_path: FilePath,
+) -> (int, list):
     errors = []
 
-    col_names = ["seqid", "start", "end", "name", "score", "strand"]
-
-    with open(file, "r") as f:
+    with open(file_path, "r") as f:
         for line_idx, line in enumerate(f, start=1):
             if line.startswith("#"):
                 continue
 
             cols = line.strip().split("\t")
-            if len(cols) != len(col_names):
+            if len(cols) != len(COL_NAMES):
                 errors.append(
                     f"Line {line_idx}: Incorrect number of "
-                    f"columns. Expected {len(col_names)}."
+                    f"columns. Expected {len(COL_NAMES)}."
                 )
                 continue
 
-            col_vals = dict(zip(col_names, cols))
-            col_vals["location"] = GenomicRange(
+            col_vals = dict(zip(COL_NAMES, cols))
+            col_vals["location"] = TssBedRange(
                 start=cols[1],
                 end=cols[2],
             )
@@ -94,6 +96,26 @@ def validate(file: FilePath, out_dir: DirectoryPath) -> None:
                 )
             except ValidationError as e:
                 errors.append(f"Line {line_idx}: {e}")
+
+    return 0, errors
+
+
+def _valid_extension(file_path: FilePath) -> bool:
+    allowed_extensions = [".bed"]
+    path = Path(file_path)
+    return path.suffixes[-1] in allowed_extensions
+
+
+def validate(file_path: FilePath, out_dir: DirectoryPath) -> None:
+    if _valid_extension(file_path):
+        try:
+            _, errors = _validate_tss_rows(file_path)
+        except OSError as e:
+            logging.error(f"Error reading file: {e}")
+            return
+    else:
+        logging.error("File with .bed extension expected.")
+        return
 
     if errors:
         time_info = datetime.now().strftime("%Y%m%d-%H%M%S")

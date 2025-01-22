@@ -8,6 +8,8 @@ from typing import (
     Literal,
 )
 
+from polars.polars import PolarsError
+
 import polars as pl
 from pydantic import (
     FilePath,
@@ -23,7 +25,7 @@ from pydantic import (
 class TSSParquetByRow(BaseModel):
     reference_name: str = Field(validation_alias="referenceName")
     start: Annotated[PositiveInt, Field(validation_alias="tssStart")]
-    end: Annotated[PositiveInt, Field(validation_alias="tssEnd")]
+    end: Annotated[PositiveInt, Field(validation_alias="tssEnd", ge=1)]
     gene_id: str = Field(validation_alias="geneId")
     strand: Literal["FORWARD", "REVERSE"]
 
@@ -56,10 +58,24 @@ def write_validation_errors(errors: list[str], out_dir: Path) -> None:
     logging.error(f"Validation errors written to {error_file}")
 
 
+def _valid_extension(file_path: FilePath) -> bool:
+    allowed_extensions = [".parquet"]
+    path = Path(file_path)
+    return path.suffixes[-1] in allowed_extensions
+
+
 def validate(file_path: FilePath, out_dir: DirectoryPath) -> None:
     errors = []
 
-    df = pl.read_parquet(file_path)
+    if _valid_extension(file_path):
+        try:
+            df = pl.read_parquet(file_path)
+        except PolarsError as e:
+            logging.error(f"Error reading parquet file: {e}")
+            return
+    else:
+        logging.error("File with .parquet extension expected.")
+        return
 
     for row_idx, row in enumerate(df.to_dicts(), start=1):
         try:
