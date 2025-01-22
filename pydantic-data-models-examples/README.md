@@ -237,6 +237,8 @@ class TssRow(BaseModel):
 
 ## Running example
 
+if not using `uv`, you can run this script directly: `python src/pydantic_data_models_examples/cli.py -h`
+
 ### TSSs BED file
 
 [implementation](src/pydantic_data_models_examples/models/tss_bed.py)
@@ -256,11 +258,29 @@ Validation errors due to unexpected values for strand
 Validation errors due to missing column
 
 ```
-uv run ens-annot-validate  -t tss-bed "data/Homo_sapiens-GRCh38-113-TSS-features_missing_col.bed" 
+uv run ens-annot-validate  -t tss-bed "data/Homo_sapiens-GRCh38-113-TSS-features_wrong_coord.bed" 
 
 ```
 
-if not using `uv`, you can run this script directly: `python src/pydantic_data_models_examples/cli.py -h`
+### Exercise: improve CDS counts BED validation
+
+```
+uv run ens-annot-validate  -t cds-counts-bed "data/Homo_sapiens-GRCh38-113-CDS_Counts-features.bed"
+```
+
+Try to modify [CDS counts BED validation](src/pydantic_data_models_examples/models/cds_counts_bed.py)
+
+A few expectations we would be interested to check for:
+
+- counts should be normalized (0 - 1, float)
+- strand information is not expected.
+- Ensembl accessions expected in name column
+
+Try to produce validation errors by running:
+
+```
+`uv run ens-annot-validate  -t cds-counts-bed "data/Homo_sapiens-GRCh38-113-CDS_Counts-features_with_errors.bed"
+```
 
 ## Setting up this project
 
@@ -315,11 +335,14 @@ uv run ens-annot-validate
 
 ```
 
+if not using `uv`, you can run this script directly: `python src/pydantic_data_models_examples/cli.py -h`
+after activating the corresponding virtual environment.
+
 If everything is set up correctly, you should see the following help menu of the command line interface that we will use
 as the entrypoint to interact with the data validation examples.
 
 ```
-usage: ens-annot-validate [-h] [-t {ensembl-genome-gff3,tss-parquet,tss-bed}] [--output-dir Path] FILE-PATH
+usage: ens-annot-validate [-h] [-t {ensembl-genome-gff3,tss-parquet,tss-bed,cds-counts-bed}] [--output-dir Path] FILE-PATH
 
 Example: ens-annot-validate -t ensembl-genome-gff3 <FILE-PATH>
 
@@ -336,17 +359,15 @@ positional arguments:
 
 options:
   -h, --help            show this help message and exit
-  -t {ensembl-genome-gff3,tss-parquet,tss-bed}
+  -t {ensembl-genome-gff3,tss-parquet,tss-bed,cds-counts-bed}
                         Input file type (default: ensembl-genome-gff3)
   --output-dir Path     (default: ./)
-
 
 ```
 
 Project structure
 
 ```
-
 
 ```
 
