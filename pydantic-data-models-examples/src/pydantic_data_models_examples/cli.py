@@ -50,10 +50,10 @@ class EnsAnnotationValidate(
     Validate:
         - Ensembl genomic annotation files (Ensembl genome GFF3s)
         - Computed annotation features files used for Ensembl Regulation annotation Db
-            - TSSs
-            - Merged Exons
-            - CDSs counts
-            - Representative exons and CDSs
+            - TSSs (BED and Parquet)
+            - CDSs counts (to be implemented)
+            - Merged Exons (to be implemented)
+            - Representative exons and CDSs (to be implemented)
     """
 
     file_path: CliPositionalArg[InputFilePath]
