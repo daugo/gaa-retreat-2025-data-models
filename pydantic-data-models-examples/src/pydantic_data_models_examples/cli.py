@@ -12,29 +12,31 @@ from pydantic_data_models_examples.models import (
     ensembl_gff3,
     tss_bed,
     tss_parquet,
+    cds_counts_bed,
 )
 
 from rich.logging import RichHandler
 
-MD5SumHash = Annotated[
-    str, Field(description="MD5 checksum hash.", pattern="^[a-fA-F0-9]{32}$")
-]
+# MD5SumHash = Annotated[
+#     str, Field(description="MD5 checksum hash.", pattern="^[a-fA-F0-9]{32}$")
+# ]
+#
+
+
+# InputFileTypes = Annotated[
+#     Literal[
+#         "ensembl-genome-gff3",
+#         "tss-parquet",
+#         "tss-bed",
+#         "merged-exons-parquet",
+#         "merged-exons-bed",
+#     ],
+#     Field(description="Input file type"),
+# ]
 
 InputFilePath = Annotated[
     FilePath,
     Field(description="Input file path to validate"),
-]
-
-
-InputFileTypes = Annotated[
-    Literal[
-        "ensembl-genome-gff3",
-        "tss-parquet",
-        "tss-bed",
-        "merged-exons-parquet",
-        "merged-exons-bed",
-    ],
-    Field(description="Input file type"),
 ]
 
 
@@ -62,8 +64,7 @@ class EnsAnnotationValidate(
             "ensembl-genome-gff3",
             "tss-parquet",
             "tss-bed",
-            # "merged-exons-parquet",
-            # "merged-exons-bed",
+            "cds-counts-bed",
         ],
         Field(
             validation_alias=AliasChoices("t"),
@@ -130,6 +131,10 @@ def cli() -> int:
     elif args.type == "tss-parquet":
         logging.info(f"Validating TSS Parquet file: {args.file_path}")
         return tss_parquet.validate(args.file_path, args.output_dir)
+
+    elif args.type == "cds-counts-bed":
+        logging.info(f"Validating TSS Parquet file: {args.file_path}")
+        return cds_counts_bed.validate(args.file_path, args.output_dir)
 
     return 0
 
