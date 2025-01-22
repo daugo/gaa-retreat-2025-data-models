@@ -368,7 +368,38 @@ options:
 Project structure
 
 ```
-
+.
+├── data
+│   ├── Homo_sapiens-GRCh38-113-CDS_Counts-features.bed
+│   ├── Homo_sapiens-GRCh38-113-CDS_Counts-features.parquet
+│   ├── Homo_sapiens-GRCh38-113-CDS_Counts-features_with_errors.bed
+│   ├── Homo_sapiens-GRCh38-113-TSS-features.bed
+│   ├── Homo_sapiens-GRCh38-113-TSS-features.parquet
+│   ├── Homo_sapiens-GRCh38-113-TSS-features_strand_err.bed
+│   └── Homo_sapiens-GRCh38-113-TSS-features_wrong_coord.bed
+├── pyproject.toml
+├── README.md
+├── src
+│   └── pydantic_data_models_examples
+│       ├── cli.py
+│       ├── __init__.py
+│       ├── models
+│       │   ├── cds_counts_bed.py
+│       │   ├── ensembl_gff3.py
+│       │   ├── __init__.py
+│       │   ├── __pycache__
+│       │   │   ├── cds_counts_bed.cpython-312.pyc
+│       │   │   ├── ensembl_gff3.cpython-312.pyc
+│       │   │   ├── __init__.cpython-312.pyc
+│       │   │   ├── tss_bed.cpython-312.pyc
+│       │   │   └── tss_parquet.cpython-312.pyc
+│       │   ├── tss_bed.py
+│       │   └── tss_parquet.py
+│       ├── __pycache__
+│       │   ├── cli.cpython-312.pyc
+│       │   └── __init__.cpython-312.pyc
+│       └── py.typed
+└── uv.lock
 ```
 
 
