@@ -1,5 +1,3 @@
-from unittest import TextTestResult
-
 # Custom data validation with Pydantic
 
 ## Introduction to Pydantic
