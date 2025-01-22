@@ -25,7 +25,7 @@ class TSSParquetByRow(BaseModel):
     start: Annotated[PositiveInt, Field(validation_alias="tssStart")]
     end: Annotated[PositiveInt, Field(validation_alias="tssEnd")]
     gene_id: str = Field(validation_alias="geneId")
-    strand: Literal["FORWARD", "-"]
+    strand: Literal["FORWARD", "REVERSE"]
 
     @model_validator(mode="after")
     def validate_coordinates(self) -> Self:
