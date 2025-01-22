@@ -303,7 +303,7 @@ def _is_compressed_gff3(file_path: FilePath):
     return False
 
 
-def validate(ensembl_gff3_file: FilePath, out_dir: DirectoryPath) -> None:
+def validate(ensembl_gff3_file: FilePath, out_dir: DirectoryPath) -> int:
     errors = []
 
     if _is_compressed_gff3(ensembl_gff3_file):
@@ -325,5 +325,7 @@ def validate(ensembl_gff3_file: FilePath, out_dir: DirectoryPath) -> None:
 
         logging.error(f"Found {len(errors)} validation errors.")
         logging.error(f"Validation errors written to {error_file}")
+        return 1
     else:
         logging.info("No validation errors found.")
+        return 0

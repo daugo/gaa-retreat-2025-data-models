@@ -64,7 +64,7 @@ def _valid_extension(file_path: FilePath) -> bool:
     return path.suffixes[-1] in allowed_extensions
 
 
-def validate(file_path: FilePath, out_dir: DirectoryPath) -> None:
+def validate(file_path: FilePath, out_dir: DirectoryPath) -> int:
     errors = []
 
     if _valid_extension(file_path):
@@ -90,3 +90,6 @@ def validate(file_path: FilePath, out_dir: DirectoryPath) -> None:
 
     if errors:
         write_validation_errors(errors, out_dir)
+        return 1
+
+    return 0

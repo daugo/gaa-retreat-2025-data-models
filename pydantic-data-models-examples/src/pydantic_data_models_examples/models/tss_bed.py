@@ -38,8 +38,7 @@ class TssBedRange(BedRange):
         if (self.end - self.start) != 1:
             raise ValueError(
                 f"TSSs should be a one base feature. (end ({self.end}) -"
-                f" start({self.start})) != 1."
-                f"{self.end})."
+                f" start({self.start})) != 1)"
             )
         return self
 
@@ -85,12 +84,13 @@ def _validate_tss_rows(
                 continue
 
             col_vals = dict(zip(COL_NAMES, cols))
-            col_vals["location"] = TssBedRange(
-                start=cols[1],
-                end=cols[2],
-            )
 
             try:
+                col_vals["location"] = TssBedRange(
+                    start=cols[1],
+                    end=cols[2],
+                )
+
                 TssRow(
                     **col_vals,
                 )
@@ -106,7 +106,7 @@ def _valid_extension(file_path: FilePath) -> bool:
     return path.suffixes[-1] in allowed_extensions
 
 
-def validate(file_path: FilePath, out_dir: DirectoryPath) -> None:
+def validate(file_path: FilePath, out_dir: DirectoryPath) -> int:
     if _valid_extension(file_path):
         try:
             _, errors = _validate_tss_rows(file_path)
@@ -126,5 +126,7 @@ def validate(file_path: FilePath, out_dir: DirectoryPath) -> None:
 
         logging.error(f"Found {len(errors)} validation errors.")
         logging.error(f"Validation errors written to {error_file}")
+        return 1
     else:
         logging.info("No validation errors found.")
+        return 0

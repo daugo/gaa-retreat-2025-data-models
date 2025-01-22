@@ -121,15 +121,15 @@ def cli() -> int:
 
     if args.type == "ensembl-genome-gff3":
         logging.info(f"Validating Ensembl genome GFF3 file: {args.file_path}")
-        ensembl_gff3.validate(args.file_path, args.output_dir)
+        return ensembl_gff3.validate(args.file_path, args.output_dir)
 
     elif args.type == "tss-bed":
         logging.info(f"Validating TSS BED file: {args.file_path}")
-        tss_bed.validate(args.file_path, args.output_dir)
+        return tss_bed.validate(args.file_path, args.output_dir)
 
     elif args.type == "tss-parquet":
         logging.info(f"Validating TSS Parquet file: {args.file_path}")
-        tss_parquet.validate(args.file_path, args.output_dir)
+        return tss_parquet.validate(args.file_path, args.output_dir)
 
     return 0
 
