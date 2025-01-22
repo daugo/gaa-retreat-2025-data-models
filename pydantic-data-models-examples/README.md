@@ -235,6 +235,33 @@ class TssRow(BaseModel):
 
 ```
 
+## Running example
+
+### TSSs BED file
+
+[implementation](src/pydantic_data_models_examples/models/tss_bed.py)
+
+Run validation example
+
+```
+ uv run ens-annot-validate  -t tss-bed "data/Homo_sapiens-GRCh38-113-TSS-features.bed" 
+```
+
+Validation errors due to unexpected values for strand
+
+```
+ uv run ens-annot-validate  -t tss-bed "data/Homo_sapiens-GRCh38-113-TSS-features_strand_err.bed" 
+```
+
+Validation errors due to missing column
+
+```
+uv run ens-annot-validate  -t tss-bed "data/Homo_sapiens-GRCh38-113-TSS-features_missing_col.bed" 
+
+```
+
+if not using `uv`, you can run this script directly: `python src/pydantic_data_models_examples/cli.py -h`
+
 ## Setting up this project
 
 ### 1. Clone this repository
@@ -263,7 +290,8 @@ wget -qO- https://astral.sh/uv/install.sh | sh
 
 ```
 
-More specific instructions for uv installation can be found [here](https://docs.astral.sh/uv/installation/).
+More specific instructions for uv installation can be
+found [here](https://docs.astral.sh/uv/getting-started/installation/).
 
 If using codon, we can point you to an existent venv.
 
@@ -278,7 +306,7 @@ uv will be installed in `$HOME/.local/bin`. To add `$HOME/.local/bin` to your PA
 
 ### 3. Build and run example project
 
-From the root of the project (repository you clonned in step 1), run:
+From the root of the project (repository you cloned in step 1), run:
 
 ```
 
@@ -298,10 +326,10 @@ Example: ens-annot-validate -t ensembl-genome-gff3 <FILE-PATH>
 Validate:
     - Ensembl genomic annotation files (Ensembl genome GFF3s)
     - Computed annotation features files used for Ensembl Regulation annotation Db
-        - TSSs
-        - Merged Exons
-        - CDSs counts
-        - Representative exons and CDSs
+        - TSSs (BED and Parquet)
+        - CDSs counts (to be implemented)
+        - Merged Exons (to be implemented)
+        - Representative exons and CDSs (to be implemented)
 
 positional arguments:
   FILE-PATH             Input file path to validate
@@ -312,25 +340,14 @@ options:
                         Input file type (default: ensembl-genome-gff3)
   --output-dir Path     (default: ./)
 
+
 ```
 
 Project structure
 
 ```
-.
-├── pyproject.toml
-├── README.md
-├── src
-│   └── pydantic_data_models_examples
-│       ├── cli.py
-│       ├── __init__.py
-│       ├── models
-│       │   ├── ensembl_gff3.py
-│       │   ├── __init__.py
-│       │   ├── tss_bed.py
-│       │   └── tss_parquet.py
-│       └── py.typed
-└── uv.lock
+
+
 ```
 
 
