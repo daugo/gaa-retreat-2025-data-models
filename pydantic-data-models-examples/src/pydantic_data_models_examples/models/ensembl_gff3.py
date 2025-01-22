@@ -278,7 +278,7 @@ COL_NAMES = [
 ]
 
 
-def _is_valid_gff3(file_path: FilePath):
+def _valid_extension(file_path: FilePath) -> bool:
     allowed_compressions = [".gz"]
 
     path = Path(file_path)
@@ -297,9 +297,7 @@ def _is_compressed_gff3(file_path: FilePath):
     path = Path(file_path)
     suffixes = path.suffixes[-2:]
 
-    logging.info(f"suffixes: {suffixes}")
-
-    if _is_valid_gff3(path) and len(suffixes) == 2 and suffixes[1] == ".gz":
+    if _valid_extension(path) and len(suffixes) == 2 and suffixes[1] == ".gz":
         return True
 
     return False
@@ -312,7 +310,7 @@ def validate(ensembl_gff3_file: FilePath, out_dir: DirectoryPath) -> None:
         with gzip.open(ensembl_gff3_file, "rt") as f:
             _validate_gff3_rows(f, errors)
 
-    elif _is_valid_gff3(ensembl_gff3_file):
+    elif _valid_extension(ensembl_gff3_file):
         with open(ensembl_gff3_file, "rt") as f:
             _validate_gff3_rows(f, errors)
     else:
